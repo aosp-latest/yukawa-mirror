@@ -1,0 +1,66 @@
+name: Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+    
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+     - name: Delete old workflow runs
+       uses: Mattraks/delete-workflow-runs@v2
+       with:
+         retain_days: 2
+         keep_minimum_runs: 2
+  build:
+    name: Sync
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build: [yukawa, yukawa-vendor, yukawa-manifest, yukawa-linux, yukawa-linux-device, yukawa-linux-manifest, yukawa-u-boot, yukawa-doc]
+        include:
+          - build: yukawa
+            branch: 'yukawa-android-16'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/aosp/device/amlogic/yukawa.git'
+            target: 'https://github.com/aosp-latest/yukawa.git'
+          - build: yukawa-vendor
+            branch: 'android-16'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/aosp/vendor-package.git'
+            target: 'https://github.com/aosp-latest/yukawa-vendor.git'
+          - build: yukawa-manifest
+            branch: 'yukawa-android-16'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/aosp/manifest.git'
+            target: 'https://github.com/aosp-latest/yukawa-manifest.git'
+          - build: yukawa-linux
+            branch: 'integ/amlogic-android16-6.12'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/linux.git'
+            target: 'https://github.com/aosp-latest/yukawa-linux.git'
+          - build: yukawa-linux-device
+            branch: 'common-android16-6.12'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/aosp/kernel/yukawa-device.git'
+            target: 'https://github.com/aosp-latest/yukawa-linux-device.git'
+          - build: yukawa-linux-manifest
+            branch: 'yukawa-android16-6.12'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/aosp/kernel/manifest.git'
+            target: 'https://github.com/aosp-latest/yukawa-linux-manifest.git'
+          - build: yukawa-u-boot
+            branch: 'u-boot/v2026.01-rc4/integ'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/u-boot.git'
+            target: 'https://github.com/aosp-latest/yukawa-u-boot.git'
+          - build: yukawa-doc
+            branch: 'yukawa-android-16,yukawa-android-14'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/doc.git'
+            target: 'https://github.com/aosp-latest/yukawa-doc.git'
+    steps:
+    - name: Sync
+      shell: bash
+      run: |
+        wget -c -nv https://github.com/entireio/git-sync/releases/download/v0.7.0/git-sync_0.7.0_linux_amd64.tar.gz
+        tar -zxvf git-sync_*.tar.gz
+        ./git-sync sync --progress -v --branch ${{ matrix.branch }} --target-token '${{ secrets.CI_TOKEN }}' ${{ matrix.source }} ${{ matrix.target }}
