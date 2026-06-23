@@ -1,0 +1,40 @@
+name: Sync kernel
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 1"
+
+jobs:
+  build:
+    name: Sync kernel
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build: [yukawa-kernel]
+        include:
+          - build: yukawa-kernel
+            branch: 'yukawa-android-16'
+            source: 'https://gitlab.baylibre.com/baylibre/amlogic/atv/aosp/device/amlogic/yukawa-kernel.git'
+
+    steps:
+    - name: Sync kernel
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y -q git-lfs
+        git clone -v ${{ matrix.source }} -b ${{ matrix.branch }} --depth=1 --single-branch --progress kernel
+        cd kernel
+        rm -fr .git
+        git config --global user.email "xinjun.ma@qq.com"
+        git config --global user.name "XinJun Ma"
+        git config --global init.defaultBranch main
+        git init
+        git add .
+        git commit -m "update binaries"
+        git lfs migrate info --above=50MB
+        git lfs migrate import --include-ref=main --above=50MB
+        #git filter-repo --depth 1
+        git remote add github https://github:${{ secrets.CI_TOKEN }}@github.com/aosp-latest/yukawa-kernel.git
+        git branch -M ${{ matrix.branch }}
+        git push -f -v -u github ${{ matrix.branch }} --progress
